@@ -4,41 +4,51 @@ import os
 from flask import Flask
 from threading import Thread
 
-# Render မသေအောင် Port ဖွင့်ပေးခြင်း
+# Render Health Check server
 app = Flask('')
+
 @app.route('/')
 def home():
-    return "Bot is running!"
+    return "Bot is running!"
 
 def run_web():
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080)
 
-# မင်းရဲ့ Token ကို ဒီမှာ အသေထည့်ထားတယ်
+# မင်းပေးထားတဲ့ Token အသစ်ကို ဒီမှာ ထည့်ထားပါတယ်
 TOKEN = '8363499366:AAHsE4XE_hw44OT6Fqj6JFLZQsNy_2rwt0M'
 bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "TikTok Link ပို့ပေးပါ၊ ၂၄ နာရီလုံး အဆင်သင့်ပါပဲ။")
+    bot.reply_to(message, "မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ်။")
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
-    url = message.text
-    if "tiktok.com" in url:
-        msg = bot.reply_to(message, "ဒေါင်းလုဒ်ဆွဲနေပါတယ်...")
-        ydl_opts = {'format': 'best', 'outtmpl': 'vid.mp4', 'quiet': True}
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-            with open('vid.mp4', 'rb') as video:
-                bot.send_video(message.chat.id, video)
-            os.remove('vid.mp4')
-            bot.delete_message(message.chat.id, msg.message_id)
-        except Exception as e:
-            bot.reply_to(message, f"Error: {str(e)}")
+    url = message.text
+    if "tiktok.com" in url:
+        msg = bot.reply_to(message, "ဒေါင်းလုဒ်ဆွဲနေပါတယ်... ခဏစောင့်ပေးပါ ")
+        ydl_opts = {
+            'format': 'best',
+            'outtmpl': 'vid.mp4',
+            'quiet': True,
+            'no_warnings': True
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            with open('vid.mp4', 'rb') as video:
+                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ! ")
+            os.remove('vid.mp4')
+            bot.delete_message(message.chat.id, msg.message_id)
+        except Exception as e:
+            bot.reply_to(message, f"အမှားအယွင်းတစ်ခု ရှိနေပါတယ်- {str(e)}")
+    else:
+        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျာ။")
 
-# Web Server ကို Background မှာ Run မယ်
-Thread(target=run_web).start()
-
-# Bot ကို စတင်မယ်
-bot.polling()
+if __name__ == "__main__":
+    # Start web server
+    t = Thread(target=run_web)
+    t.start()
+    # Start bot
+    print("Bot is starting...")
+    bot.polling(none_stop=True)
