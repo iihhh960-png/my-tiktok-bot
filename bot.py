@@ -20,13 +20,13 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ်။")
+    bot.reply_to(message, "%username% မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ် ခမျ🤗")
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
     url = message.text
     if "tiktok.com" in url:
-        msg = bot.reply_to(message, "ဒေါင်းလုဒ်ဆွဲနေပါတယ်... ခဏစောင့်ပေးပါ ")
+        msg = bot.reply_to(message, "ဒေါင်းလုဒ်ဆွဲနေပါတယ်... ခဏစောင့်ပေးပါ🥱 ")
         ydl_opts = {
             'format': 'best',
             'outtmpl': 'vid.mp4',
@@ -37,7 +37,7 @@ def download_video(message):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             with open('vid.mp4', 'rb') as video:
-                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ! ")
+                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ🥰 ")
             os.remove('vid.mp4')
             bot.delete_message(message.chat.id, msg.message_id)
         except Exception as e:
