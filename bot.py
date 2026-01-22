@@ -15,7 +15,7 @@ def run_web():
     app.run(host='0.0.0.0', port=8080)
 
 # မင်းပေးထားတဲ့ Token အသစ်ကို ဒီမှာ ထည့်ထားပါတယ်
-TOKEN = '8363499366:AAHsE4XE_hw44OT6Fqj6JFLZQsNy_2rwt0M'
+TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
 bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
