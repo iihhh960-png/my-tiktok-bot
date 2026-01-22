@@ -20,7 +20,7 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "%username% မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ် ခမျ🤗")
+    bot.reply_to(message, "မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ် ခမျ🤗")
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
