@@ -33,7 +33,7 @@ def is_subscribed(user_id):
 def start(message):
     user_id = message.from_user.id
     if is_subscribed(user_id):
-        bot.reply_to(message, " မဂၤလာပါ! Bot ကို အသုံးျပဳနိုင္ပါၿပီ။ TikTok Link ပို႔ေပးပါ ခမ်")
+        bot.reply_to(message, " မင်္ဂလာပါ🤗! Bot ကို အသုံးပြုနိုင်ပါပြီ။ TikTok Link ပို့ပေးပါခမျ")
     else:
         # Join ရေသးတဲ့ User ကိုပဲ ခလုတ္ျပမယ္
         markup = telebot.types.InlineKeyboardMarkup()
@@ -41,7 +41,7 @@ def start(message):
         markup.add(btn)
         bot.send_message(
             message.chat.id, 
-            " ဆက္လက္အသုံးျပဳနိုင္ရန္ ကျွန်ုပ်တို့၏ Channel ကို အရင္ Join ေပးပါဦးဗ်။\n\nJoin ၿပီးလွ်င္ /start ကို ျပန္ႏွိပ္ေပးပါ။", 
+            " BOT ကိုအသုံး ပြုရန် ကျွန်ုပ်တို့၏ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /statt ကိုပြန်ပို့ပေးပါဗျ🥰။", 
             reply_markup=markup
         )
 
@@ -56,7 +56,7 @@ def download_video(message):
 
     url = message.text
     if "tiktok.com" in url:
-        msg = bot.reply_to(message, "ေဒါင္းလုဒ္ဆြဲေနပါတယ္... ခဏေစာင့္ေပးပါ ")
+        msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ🥱 ")
         
         # yt-dlp option မ်ားကို error ကင္းေအာင္ ျပင္ထားပါတယ္
         ydl_opts = {
@@ -74,14 +74,14 @@ def download_video(message):
                 ydl.download([url])
                 
             with open('vid.mp4', 'rb') as video:
-                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါၿပီ ခမ် ")
+                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ🥰 ")
             
             os.remove('vid.mp4')
             bot.delete_message(message.chat.id, msg.message_id)
         except Exception as e:
-            bot.reply_to(message, f"အမွားအယြင္းတစ္ခု ရွိေနပါတယ္- {str(e)}")
+            bot.reply_to(message, f"တစ်ခုခု မှားနေပါတယ်😒- {str(e)}")
     else:
-        bot.reply_to(message, "TikTok Link ပဲ ပို႔ေပးပါဗ်ာ။")
+        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ🤗။")
 
 if __name__ == "__main__":
     t = Thread(target=run_web)
