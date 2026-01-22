@@ -4,7 +4,10 @@ import os
 from flask import Flask
 from threading import Thread
 
-# Render Health Check server
+# --- ဒီေနရာမွာ မင္းရဲ႕ Channel Username ကို ေျပာင္းထည့္ပါ ---
+CHANNEL_ID = "@musicfan11234" 
+# --------------------------------------------------
+
 app = Flask('')
 
 @app.route('/')
@@ -12,43 +15,76 @@ def home():
     return "Bot is running!"
 
 def run_web():
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=10000) # Render အတြက္ port 10000 က ပိုအဆင္ေျပပါတယ္
 
-# မင်းပေးထားတဲ့ Token အသစ်ကို ဒီမှာ ထည့်ထားပါတယ်
 TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
 bot = telebot.TeleBot(TOKEN)
 
+# User က Join ထားျခင္း ရွိ/မရွိ စစ္ေဆးတဲ့ function
+def is_subscribed(user_id):
+    try:
+        member = bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except:
+        # Error တက္ရင္ (ဥပမာ Bot က Admin မဟုတ္ရင္) လူတိုင္းသုံးလို႔ရေအာင္ True ေပးထားမယ္
+        return True
+
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, "မင်္ဂလာပါ! TikTok Link ပို့ပေးပါ၊ ဒေါင်းလုဒ်ဆွဲပေးပါ့မယ် ခမျ🤗")
+    user_id = message.from_user.id
+    if is_subscribed(user_id):
+        bot.reply_to(message, " မဂၤလာပါ! Bot ကို အသုံးျပဳနိုင္ပါၿပီ။ TikTok Link ပို႔ေပးပါ ခမ်")
+    else:
+        # Join ရေသးတဲ့ User ကိုပဲ ခလုတ္ျပမယ္
+        markup = telebot.types.InlineKeyboardMarkup()
+        btn = telebot.types.InlineKeyboardButton(text=" Join Our Channel", url=f"https://t.me/{CHANNEL_ID.replace('@', '')}")
+        markup.add(btn)
+        bot.send_message(
+            message.chat.id, 
+            " ဆက္လက္အသုံးျပဳနိုင္ရန္ ကျွန်ုပ်တို့၏ Channel ကို အရင္ Join ေပးပါဦးဗ်။\n\nJoin ၿပီးလွ်င္ /start ကို ျပန္ႏွိပ္ေပးပါ။", 
+            reply_markup=markup
+        )
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
+    user_id = message.from_user.id
+    
+    # User က Join ထားမွ ဗီဒီယိုေဒါင္းေပးမယ္
+    if not is_subscribed(user_id):
+        start(message)
+        return
+
     url = message.text
     if "tiktok.com" in url:
-        msg = bot.reply_to(message, "ဒေါင်းလုဒ်ဆွဲနေပါတယ်... ခဏစောင့်ပေးပါ🥱 ")
+        msg = bot.reply_to(message, "ေဒါင္းလုဒ္ဆြဲေနပါတယ္... ခဏေစာင့္ေပးပါ ")
+        
+        # yt-dlp option မ်ားကို error ကင္းေအာင္ ျပင္ထားပါတယ္
         ydl_opts = {
             'format': 'best',
             'outtmpl': 'vid.mp4',
             'quiet': True,
-            'no_warnings': True
+            'no_warnings': True,
+            'nocheckcertificate': True
         }
+        
         try:
+            if os.path.exists('vid.mp4'): os.remove('vid.mp4') # ဖိုင္ေဟာင္းရွိေနရင္ ဖ်က္မယ္
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
+                
             with open('vid.mp4', 'rb') as video:
-                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ🥰 ")
+                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါၿပီ ခမ် ")
+            
             os.remove('vid.mp4')
             bot.delete_message(message.chat.id, msg.message_id)
         except Exception as e:
-            bot.reply_to(message, f"အမှားအယွင်းတစ်ခု ရှိနေပါတယ်- {str(e)}")
+            bot.reply_to(message, f"အမွားအယြင္းတစ္ခု ရွိေနပါတယ္- {str(e)}")
     else:
-        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျာ။")
+        bot.reply_to(message, "TikTok Link ပဲ ပို႔ေပးပါဗ်ာ။")
 
 if __name__ == "__main__":
-    # Start web server
     t = Thread(target=run_web)
     t.start()
-    # Start bot
     print("Bot is starting...")
     bot.polling(none_stop=True)
