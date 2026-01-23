@@ -1,6 +1,7 @@
 import telebot
 import yt_dlp
 import os
+import uuid
 from flask import Flask
 from threading import Thread
 
@@ -30,14 +31,14 @@ def is_subscribed(user_id):
 def start(message):
     user_id = message.from_user.id
     if is_subscribed(user_id):
-        bot.reply_to(message, "မင်္ဂလာပါ! Bot ကို အသုံးပြုနိုင်ပါပြီ။ TikTok Link ပို့ပေးပါခမျ")
+        bot.reply_to(message, "မဂၤလာပါ! Bot ကို အသုံးျပဳနိုင္ပါၿပီ။ TikTok Link ပို႔ေပးပါခမ်")
     else:
         markup = telebot.types.InlineKeyboardMarkup()
         btn = telebot.types.InlineKeyboardButton(text="Join Our Channel", url=f"https://t.me/musicfan11234")
         markup.add(btn)
         bot.send_message(
             message.chat.id, 
-            "BOT ကိုအသုံး ပြုရန် ကြှနျုပျတို့၏ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ။", 
+            "BOT ကိုအသုံး ျပဳရန္ ကျွန်ုပ်တို့၏ Channel ကို အရင္ Join ေပးပါအုံးဗ်။Channel Join ၿပီးသြားရင္ /start ကိုျပန္ပို႔ေပးပါဗ်။", 
             reply_markup=markup
         )
 
@@ -50,36 +51,39 @@ def download_video(message):
 
     url = message.text
     if "tiktok.com" in url:
-        msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ ")
+        msg = bot.reply_to(message, "Logo ေဖ်ာက္ေနပါတယ္...ခနေစာင့္ပါဗ် ")
         
-        # Slideshow ရော Video ရော အဆင်ပြေအောင် Option ကို ပြင်ထားတယ်
+        # ဖိုင္နာမည္ကို တစ္ခါနဲ႕တစ္ခါ မတူေအာင္ Random ေပးလိုက္တာပါ
+        file_name = f"video_{uuid.uuid4().hex}.mp4"
+        
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',
-            'outtmpl': 'vid.mp4',
+            'format': 'best',
+            'outtmpl': file_name,
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
         }
         
         try:
-            if os.path.exists('vid.mp4'): os.remove('vid.mp4')
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
-            with open('vid.mp4', 'rb') as video:
-                bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ ")
-            
-            os.remove('vid.mp4')
-            bot.delete_message(message.chat.id, msg.message_id)
-        except Exception as e:
-            # Slideshow ဖြစ်နေရင် သီးသန့် error ပြပေးမယ်
-            if "extract_info" in str(e) or "7593" in str(e):
-                bot.edit_message_text(" ဒါက Image Slideshow ဖြစ်နေလို့ Video အနေနဲ့ ဒေါင်းလို့မရပါဘူးဗျ။ Video လင့်ခ်နဲ့ ပြန်စမ်းပေးပါဦး။", message.chat.id, msg.message_id)
+            if os.path.exists(file_name):
+                with open(file_name, 'rb') as video:
+                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါၿပီ ခမ် ")
+                
+                # ပို႔ၿပီးတာနဲ႕ ဖိုင္ကို ခ်က္ခ်င္းျပန္ဖ်က္မယ္
+                os.remove(file_name)
+                bot.delete_message(message.chat.id, msg.message_id)
             else:
-                bot.reply_to(message, f"တစ်ခုခု မှားနေပါတယ်😒- {str(e)}")
+                bot.edit_message_text(" ဗီဒီယိုဖိုင္ ရွာမေတြ႕ပါဘူး။ ျပန္စမ္းၾကည့္ေပးပါ။", message.chat.id, msg.message_id)
+                
+        except Exception as e:
+            if os.path.exists(file_name): os.remove(file_name)
+            bot.reply_to(message, f"တစ္ခုခု မွားေနပါတယ္😒- {str(e)}")
     else:
-        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ။")
+        bot.reply_to(message, "TikTok Link ပဲ ပို႔ေပးပါဗ်။")
 
 if __name__ == "__main__":
     t = Thread(target=run_web)
