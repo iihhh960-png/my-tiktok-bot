@@ -35,7 +35,7 @@ def start(message):
         markup = telebot.types.InlineKeyboardMarkup()
         btn = telebot.types.InlineKeyboardButton(text="Join Our Channel", url=f"https://t.me/musicfan11234")
         markup.add(btn)
-        bot.send_message(message.chat.id, "BOT ကိုအသုံး ပြုရန် ကြှနျုပျတို့၏ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ။", reply_markup=markup)
+        bot.send_message(message.chat.id, "BOT ကိုအသုံး ပြုရန် ကျွန်တော်တိုရဲ့ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ။", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
