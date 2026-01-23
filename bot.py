@@ -2,23 +2,22 @@ import telebot
 import requests
 import os
 import uuid
+import time
 from flask import Flask
 from threading import Thread
 
-# --- Channel Username ---
-CHANNEL_ID = "@musicfan11234" 
-
+# --- Bot Configuration ---
+TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
+CHANNEL_ID = "@musicfan11234"
+bot = telebot.TeleBot(TOKEN)
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is running!"
+    return "Bot is running perfectly!"
 
 def run_web():
     app.run(host='0.0.0.0', port=10000)
-
-TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
-bot = telebot.TeleBot(TOKEN)
 
 def is_subscribed(user_id):
     try:
@@ -31,16 +30,12 @@ def is_subscribed(user_id):
 def start(message):
     user_id = message.from_user.id
     if is_subscribed(user_id):
-        bot.reply_to(message, "မင်္ဂလာပါ! Bot ကို အသုံးပြုနိုင်ပါပြီ။ TikTok Link ပို့ပေးပါခမျ🥰")
+        bot.reply_to(message, "မင်္ဂလာပါ! Bot ကို အသုံးပြုနိုင်ပါပြီ။ TikTok Link ပို့ပေးပါခမျ")
     else:
         markup = telebot.types.InlineKeyboardMarkup()
         btn = telebot.types.InlineKeyboardButton(text="Join Our Channel", url=f"https://t.me/musicfan11234")
         markup.add(btn)
-        bot.send_message(
-            message.chat.id, 
-            "BOT ကိုအသုံး ပြုရန် ကျွန်​ေတာ်တို့ရဲ့ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ👇။", 
-            reply_markup=markup
-        )
+        bot.send_message(message.chat.id, "BOT ကိုအသုံး ပြုရန် ကြှနျုပျတို့၏ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ။", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
@@ -51,41 +46,56 @@ def download_video(message):
 
     url = message.text
     if "tiktok.com" in url:
-        msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ🥱 ")
+        msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ")
         
+        video_url = None
+        
+        # နည်းလမ်း (၁) TikWM
         try:
-            # ပိုကောင်းတဲ့ API အသစ်ကို သုံးထားပါတယ်
-            api_url = f"https://api.tiklydown.eu.org/api/download?url={url}"
-            response = requests.get(api_url).json()
-            
-            # Video link ကို ရယူခြင်း
-            video_url = response.get('video', {}).get('noWatermark') or response.get('video', {}).get('watermark')
-            
-            if video_url:
-                file_name = f"video_{uuid.uuid4().hex}.mp4"
-                
-                # ဗီဒီယိုဒေါင်းလုဒ်ဆွဲခြင်း
-                video_data = requests.get(video_url, stream=True)
-                with open(file_name, 'wb') as f:
-                    for chunk in video_data.iter_content(chunk_size=1024*1024):
-                        if chunk:
+            r = requests.get(f"https://www.tikwm.com/api/?url={url}", timeout=10).json()
+            video_url = r.get('data', {}).get('play')
+        except: pass
+
+        # နည်းလမ်း (၂) Tiklydown
+        if not video_url:
+            try:
+                r = requests.get(f"https://api.tiklydown.eu.org/api/download?url={url}", timeout=10).json()
+                video_url = r.get('video', {}).get('noWatermark')
+            except: pass
+
+        # နည်းလမ်း (၃) အရန် API
+        if not video_url:
+            try:
+                r = requests.get(f"https://api.douyin.wtf/api/tiktok/info?url={url}", timeout=10).json()
+                video_url = r.get('video_data', {}).get('nwm_video_url_HQ')
+            except: pass
+
+        if video_url:
+            file_name = f"v_{uuid.uuid4().hex[:5]}.mp4"
+            try:
+                with requests.get(video_url, stream=True, timeout=30) as r:
+                    r.raise_for_status()
+                    with open(file_name, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
                             f.write(chunk)
                 
-                # ဗီဒီယိုကို Telegram ဆီ ပို့ခြင်း
                 with open(file_name, 'rb') as video:
-                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ🥰 ")
+                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ")
                 
-                os.remove(file_name)
                 bot.delete_message(message.chat.id, msg.message_id)
-            else:
-                bot.edit_message_text(" ဗီဒီယိုလင့်ခ် ရှာမတွေ့ပါ။ Link မှန်ရဲ့လား ပြန်စစ်ပေးပါ။", message.chat.id, msg.message_id)
-                
-        except Exception as e:
-            bot.reply_to(message, f"တစ်ခုခု မှားနေပါတယ်😒- {str(e)}")
+            except:
+                bot.edit_message_text(" ခေတ္တစောင့်ဆိုင်းပေးပါ။ လိုင်းမကောင်းလို့ နောက်တစ်ခေါက် ပြန်ပို့ပေးပါဗျ။", message.chat.id, msg.message_id)
+            finally:
+                if os.path.exists(file_name): os.remove(file_name)
+        else:
+            bot.edit_message_text(" TikTok ဘက်က တုံ့ပြန်မှု နှေးနေလို့ ခဏနေမှ ပြန်စမ်းပေးပါဗျ။", message.chat.id, msg.message_id)
     else:
         bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ။")
 
 if __name__ == "__main__":
-    t = Thread(target=run_web)
-    t.start()
-    bot.polling(none_stop=True)
+    Thread(target=run_web).start()
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=0, timeout=20)
+        except:
+            time.sleep(5)
