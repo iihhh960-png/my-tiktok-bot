@@ -38,7 +38,7 @@ def start(message):
         markup.add(btn)
         bot.send_message(
             message.chat.id, 
-            "BOT ကိုအသုံး ပြုရန် ကျွန်​ေတာ်တို့၏ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ🥰။", 
+            "BOT ကိုအသုံး ပြုရန် ကျွန်​ေတာ်တို့ရဲ့ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ👇။", 
             reply_markup=markup
         )
 
@@ -54,32 +54,36 @@ def download_video(message):
         msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ🥱 ")
         
         try:
-            # TikTok API သုံးပြီး Video Link ရှာခြင်း
-            api_url = f"https://www.tikwm.com/api/?url={url}"
+            # ပိုကောင်းတဲ့ API အသစ်ကို သုံးထားပါတယ်
+            api_url = f"https://api.tiklydown.eu.org/api/download?url={url}"
             response = requests.get(api_url).json()
             
-            if response.get('code') == 0:
-                video_url = response['data']['play'] # No Watermark video
+            # Video link ကို ရယူခြင်း
+            video_url = response.get('video', {}).get('noWatermark') or response.get('video', {}).get('watermark')
+            
+            if video_url:
                 file_name = f"video_{uuid.uuid4().hex}.mp4"
                 
-                # ဗီဒီယိုကို ဒေါင်းလုဒ်ဆွဲခြင်း
-                video_data = requests.get(video_url).content
+                # ဗီဒီယိုဒေါင်းလုဒ်ဆွဲခြင်း
+                video_data = requests.get(video_url, stream=True)
                 with open(file_name, 'wb') as f:
-                    f.write(video_data)
+                    for chunk in video_data.iter_content(chunk_size=1024*1024):
+                        if chunk:
+                            f.write(chunk)
                 
-                # ဗီဒီယိုပို့ခြင်း
+                # ဗီဒီယိုကို Telegram ဆီ ပို့ခြင်း
                 with open(file_name, 'rb') as video:
-                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ ")
+                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ🥰 ")
                 
                 os.remove(file_name)
                 bot.delete_message(message.chat.id, msg.message_id)
             else:
-                bot.edit_message_text(" ဗီဒီယို ဒေါင်းလုဒ်ဆွဲလို့ မရပါဘူး။ Link မှန်ရဲ့လား ပြန်စစ်ပေးပါ။", message.chat.id, msg.message_id)
+                bot.edit_message_text(" ဗီဒီယိုလင့်ခ် ရှာမတွေ့ပါ။ Link မှန်ရဲ့လား ပြန်စစ်ပေးပါ။", message.chat.id, msg.message_id)
                 
         except Exception as e:
-            bot.reply_to(message, f"အမှားတစ်ခုရှိနေပါတယ်😒- {str(e)}")
+            bot.reply_to(message, f"တစ်ခုခု မှားနေပါတယ်😒- {str(e)}")
     else:
-        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ😶။")
+        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ။")
 
 if __name__ == "__main__":
     t = Thread(target=run_web)
