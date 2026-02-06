@@ -1,101 +1,146 @@
-import telebot
-import requests
 import os
-import uuid
-import time
+import threading
 from flask import Flask
-from threading import Thread
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler, 
+    filters, 
+    ContextTypes, 
+    CallbackQueryHandler,
+    ConversationHandler
+)
+from yt_dlp import YoutubeDL
 
-# --- Bot Configuration ---
-TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
-CHANNEL_ID = "@musicfan11234"
-bot = telebot.TeleBot(TOKEN)
+# --- RENDER KEEP ALIVE ---
 app = Flask('')
-
 @app.route('/')
-def home():
-    return "Bot is running perfectly!"
+def home(): return "Bot is running!"
 
 def run_web():
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
-def is_subscribed(user_id):
+# --- CONFIG ---
+TOKEN = '8542512682:AAE_P51eSPOOu3LjlN-bKeSgvL3TG-2KWFA'
+CHOOSING, DOWNLOADING = range(2)
+
+# Unicode Emoji Codes (Copy-Safe)
+U_WAVE = "\U0001F44B"
+U_VIDEO = "\U0001F3AC"
+U_MUSIC = "\U0001F3B5"
+U_PHOTO = "\U0001F4F8"
+U_LINK = "\U0001F517"
+U_WAIT = "\U000023F3"
+U_CHECK = "\U00002705"
+U_ERROR = "\U0000274C"
+U_ROCKET = "\U0001F680"
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton(f"{U_VIDEO} Video No Logo", callback_data='video')],
+        [InlineKeyboardButton(f"{U_MUSIC} MP3 Music", callback_data='music')],
+        [InlineKeyboardButton(f"{U_PHOTO} Photos (Album)", callback_data='photo')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    text = f"{U_WAVE} **TikTok Downloader** မှ ကြိုဆိုပါတယ်။\nဘာကို ဒေါင်းလုဒ်ဆွဲချင်ပါသလဲ?"
+    
+    if update.callback_query:
+        await update.callback_query.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    else:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+    return CHOOSING
+
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['choice'] = query.data
+    await query.edit_message_text(f"{U_ROCKET} **Selected: {query.data.upper()}**\n{U_LINK} TikTok Link ကို ပို့ပေးပါဗျာ။", parse_mode='Markdown')
+    return DOWNLOADING
+
+async def download_process(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text
+    choice = context.user_data.get('choice')
+
+    if "tiktok.com" not in url:
+        await update.message.reply_text(f"{U_ERROR} TikTok Link မှန်အောင် ပြန်ပို့ပေးပါ။")
+        return DOWNLOADING
+
+    status = await update.message.reply_text(f"{U_WAIT} ပြင်ဆင်နေပါတယ်... ခဏစောင့်ပါ။")
+
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+    }
+
     try:
-        member = bot.get_chat_member(CHANNEL_ID, user_id)
-        return member.status in ['member', 'administrator', 'creator']
-    except:
-        return True
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    user_id = message.from_user.id
-    if is_subscribed(user_id):
-        bot.reply_to(message, "မင်္ဂလာပါ! Bot ကို အသုံးပြုနိုင်ပါပြီ။ TikTok Link ပို့ပေးပါခမျ")
-    else:
-        markup = telebot.types.InlineKeyboardMarkup()
-        btn = telebot.types.InlineKeyboardButton(text="Join Our Channel", url=f"https://t.me/musicfan11234")
-        markup.add(btn)
-        bot.send_message(message.chat.id, "BOT ကိုအသုံး ပြုရန် ကျွန်တော်တိုရဲ့ Channel ကို အရင် Join ပေးပါအုံးဗျ။Channel Join ပြီးသွားရင် /start ကိုပြန်ပို့ပေးပါဗျ။", reply_markup=markup)
-
-@bot.message_handler(func=lambda m: True)
-def download_video(message):
-    user_id = message.from_user.id
-    if not is_subscribed(user_id):
-        start(message)
-        return
-
-    url = message.text
-    if "tiktok.com" in url:
-        msg = bot.reply_to(message, "Logo ဖျောက်နေပါတယ်...ခနစောင့်ပါဗျ")
-        
-        video_url = None
-        
-        # နည်းလမ်း (၁) TikWM
-        try:
-            r = requests.get(f"https://www.tikwm.com/api/?url={url}", timeout=10).json()
-            video_url = r.get('data', {}).get('play')
-        except: pass
-
-        # နည်းလမ်း (၂) Tiklydown
-        if not video_url:
-            try:
-                r = requests.get(f"https://api.tiklydown.eu.org/api/download?url={url}", timeout=10).json()
-                video_url = r.get('video', {}).get('noWatermark')
-            except: pass
-
-        # နည်းလမ်း (၃) အရန် API
-        if not video_url:
-            try:
-                r = requests.get(f"https://api.douyin.wtf/api/tiktok/info?url={url}", timeout=10).json()
-                video_url = r.get('video_data', {}).get('nwm_video_url_HQ')
-            except: pass
-
-        if video_url:
-            file_name = f"v_{uuid.uuid4().hex[:5]}.mp4"
-            try:
-                with requests.get(video_url, stream=True, timeout=30) as r:
-                    r.raise_for_status()
-                    with open(file_name, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False) # အရင်ဆုံး အချက်အလက်ယူမယ်
+            
+            # --- ပုံများကို တစ်ပုံချင်းစီ Album ပို့မည့်အပိုင်း ---
+            if choice == 'photo':
+                images = info.get('thumbnails', [])
+                # TikTok photo posts များတွင် များသောအားဖြင့် 'entries' သို့မဟုတ် 'thumbnails' တွင်ပုံပါသည်
+                # ပုံစံအမျိုးမျိုးအတွက် စစ်ဆေးခြင်း
+                image_urls = []
                 
-                with open(file_name, 'rb') as video:
-                    bot.send_video(message.chat.id, video, caption="ဗီဒီယို ရပါပြီ ခမျ")
-                
-                bot.delete_message(message.chat.id, msg.message_id)
-            except:
-                bot.edit_message_text(" ခေတ္တစောင့်ဆိုင်းပေးပါ။ လိုင်းမကောင်းလို့ နောက်တစ်ခေါက် ပြန်ပို့ပေးပါဗျ။", message.chat.id, msg.message_id)
-            finally:
-                if os.path.exists(file_name): os.remove(file_name)
-        else:
-            bot.edit_message_text(" TikTok ဘက်က တုံ့ပြန်မှု နှေးနေလို့ ခဏနေမှ ပြန်စမ်းပေးပါဗျ။", message.chat.id, msg.message_id)
-    else:
-        bot.reply_to(message, "TikTok Link ပဲ ပို့ပေးပါဗျ။")
+                # entries ရှိလျှင် (Slideshow)
+                if 'entries' in info:
+                    image_urls = [e['url'] for e in info['entries'] if 'url' in e]
+                # thumbnails ထဲတွင် ပုံများရှိလျှင်
+                elif images:
+                    # အရည်အသွေးအကောင်းဆုံးပုံကို ယူရန်
+                    image_urls = [images[-1]['url']]
 
-if __name__ == "__main__":
-    Thread(target=run_web).start()
-    while True:
-        try:
-            bot.polling(none_stop=True, interval=0, timeout=20)
-        except:
-            time.sleep(5)
+                if image_urls:
+                    media_group = [InputMediaPhoto(media=img_url) for img_url in image_urls[:10]] # အများဆုံး ၁၀ ပုံ
+                    await update.message.reply_media_group(media=media_group)
+                    await status.delete()
+                else:
+                    await status.edit_text(f"{U_ERROR} ပုံများကို ရှာမတွေ့ပါ။ Video အဖြစ် ဒေါင်းကြည့်ပါ။")
+
+            # --- Video သို့မဟုတ် Music ပို့မည့်အပိုင်း ---
+            else:
+                ydl_opts['outtmpl'] = 'downloads/%(id)s.%(ext)s'
+                ydl_opts['format'] = 'bestvideo+bestaudio/best' if choice == 'video' else 'bestaudio/best'
+                
+                # အမှန်တကယ် ဒေါင်းလုဒ်ဆွဲခြင်း
+                info_download = ydl.extract_info(url, download=True)
+                file_path = ydl.prepare_filename(info_download)
+
+                if choice == 'video':
+                    await update.message.reply_video(video=open(file_path, 'rb'), caption=f"{U_CHECK} Success!")
+                elif choice == 'music':
+                    audio_path = file_path.rsplit('.', 1)[0] + ".mp3"
+                    os.rename(file_path, audio_path)
+                    await update.message.reply_audio(audio=open(audio_path, 'rb'), caption=f"{U_MUSIC} Success!")
+                    file_path = audio_path
+                
+                if os.path.exists(file_path): os.remove(file_path)
+                await status.delete()
+
+    except Exception as e:
+        await update.message.reply_text(f"{U_ERROR} အမှားအယွင်းရှိပါသည်- {str(e)}")
+    
+    return await start(update, context)
+
+def main():
+    if not os.path.exists('downloads'): os.makedirs('downloads')
+    threading.Thread(target=run_web, daemon=True).start()
+    
+    app = Application.builder().token(TOKEN).build()
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            CHOOSING: [CallbackQueryHandler(button_click)],
+            DOWNLOADING: [MessageHandler(filters.TEXT & ~filters.COMMAND, download_process)],
+        },
+        fallbacks=[CommandHandler('start', start)],
+    )
+    app.add_handler(conv_handler)
+    print("🚀 Bot is running...")
+    app.run_polling()
+
+if __name__ == '__main__':
+    main()
